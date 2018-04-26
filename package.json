@@ -1,0 +1,28 @@
+{
+  "name": "gulp-inline-import",
+  "keywords": [
+    "gulpplugin",
+    "import",
+    "es6",
+    "export",
+    "inline",
+    "include",
+    "fetch"
+  ],
+  "version": "0.1.0",
+  "description": "Inline any ES6 import by fetching its resource down to the importing file",
+  "main": "index.js",
+  "repository": "https://github.com/stellar-labs/gulp-inline-import",
+  "author": "Stellar Labs",
+  "license": "MIT",
+  "devDependencies": {
+    "gulp": "3.*",
+    "gulp-cli": "2.*"
+  },
+  "dependencies": {
+    "npm": "^6.0.0",
+    "plugin-error": "1.*",
+    "through2": "2.*",
+    "type-of": "^2.0.1"
+  }
+}
