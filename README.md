@@ -8,7 +8,7 @@ from
 import func1 from './func1.js';
 
 var func2 = function() {
-	func1();
+  func1();
 }
 
 export default func2;
@@ -18,11 +18,11 @@ to
 
 ```javascript
 var func1 = function() {
-	// ...
+  // ...
 }
 
 var func2 = function() {
-	func1();
+  func1();
 }
 
 export default func2;
