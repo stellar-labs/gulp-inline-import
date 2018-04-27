@@ -2,6 +2,32 @@
 
 Inline any ES6 import by fetching its resource down to the importing file.
 
+from
+
+```javascript
+import func1 from './func1.js';
+
+var func2 = function() {
+	func1();
+}
+
+export default func2;
+```
+
+to
+
+```javascript
+var func1 = function() {
+	// ...
+}
+
+var func2 = function() {
+	func1();
+}
+
+export default func2;
+```
+
 ## Summary
 
 - [Installation](#installation)
@@ -48,10 +74,10 @@ import cry from './cry.js';
 import walk from './walk.js';
 
 var cate = function() {
-	cry();
-	walk();
+  cry();
+  walk();
 
-	console.log('because I am a catto');
+  console.log('because I am a catto');
 };
 
 export default cate;
@@ -61,7 +87,7 @@ cry.js
 
 ```javascript
 var cry = function() {
-	console.log('meow >_<');
+  console.log('meow >_<');
 };
 
 export default cry;
@@ -71,7 +97,7 @@ walk.js
 
 ```javascript
 var walk = function() {
-	console.log('Oh is that your keyboard? Let me show you something... Zzz...');
+  console.log('Oh is that your keyboard? Let me show you something... Zzz...');
 };
 
 export default walk;
@@ -84,11 +110,32 @@ const gulp = require('gulp');
 const inlineImport = require('gulp-inline-import');
 
 gulp.task('inline', function() {
-	return gulp.src('./src/*.js')
-		.pipe( inlineImport() )
-		.pipe( gulp.dest('./src') );
+  return gulp.src('./src/*.js')
+    .pipe( inlineImport() )
+    .pipe( gulp.dest('./src') );
 });
 ```
+
+Output of cate.js
+
+```javascript
+import cry from './cry.js';
+import walk from './walk.js';
+
+var cate = function() {
+  cry();
+  walk();
+
+  console.log('because I am a catto');
+};
+
+export default cate;
+```
+
+**Note**
+
+Node packages exists to remove the export statement, like the babel plugin [babel-plugin-transform-remove-export
+](https://www.npmjs.com/package/babel-plugin-transform-remove-export).
 
 ## Options
 
