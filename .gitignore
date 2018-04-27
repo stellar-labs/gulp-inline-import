@@ -1,6 +1,5 @@
 *.tgz
 gulpfile.js
-package-lock.json
 yarn-error.log
 yarn.lock
 example/
