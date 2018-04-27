@@ -52,7 +52,7 @@ yarn install --save-dev gulp-inline-import
 Quick full installation
 
 ```bash
-npm install --dev gulp gulp-cli gulp-inline-import
+npm install --save-dev gulp gulp-cli gulp-inline-import
 ```
 
 Or
