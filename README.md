@@ -119,8 +119,13 @@ gulp.task('inline', function() {
 Output of cate.js
 
 ```javascript
-import cry from './cry.js';
-import walk from './walk.js';
+var cry = function() {
+  console.log('meow >_<');
+};
+
+var walk = function() {
+  console.log('Oh is that your keyboard? Let me show you something... Zzz...');
+};
 
 var cate = function() {
   cry();
