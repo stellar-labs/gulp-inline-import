@@ -71,7 +71,8 @@ function inlineImport(options = { verbose: DEFAULT_VERBOSE_STATE, maxDepth: DEFA
 		options.maxDepth = DEFAULT_MAX_ROUNDS;
 	}
 
-	const catch_import_statements = /(?:import\s+\w+\s+from\s+')(.*)'(?:[;]*)/g;
+	const catch_import_statements_2 = /import[\s]+[\w]+[\s]+from[\s]+["'][\w-_]+\.js["'][\s]*[;]/g; // import exportParDefaut from "nom-module.js";
+	const catch_import_statements_1 = /(?:import[\s]+["'])([\w-_.\/]+)(?:["'][;]*)/g; // import "./cate.js";
 	const catch_export_statements = /export\s+default\s+.*(;|\Z)/g;
 
 	return through.obj(function(file, encryption, callback) {
@@ -84,7 +85,7 @@ function inlineImport(options = { verbose: DEFAULT_VERBOSE_STATE, maxDepth: DEFA
 
 		let file_content = new Buffer(file.contents).toString();
 		let current_depth = 0;
-		let inlined_file_content = traverse(file_content, FILE_PATH, encryption, catch_import_statements, catch_export_statements, current_depth, options.maxDepth);
+		let inlined_file_content = traverse(file_content, FILE_PATH, encryption, catch_import_statements_1, catch_export_statements, current_depth, options.maxDepth);
 
 		file.contents = new Buffer(inlined_file_content);
 
