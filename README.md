@@ -5,7 +5,7 @@ Inline any ES6 import by fetching its resource down to the importing file.
 from
 
 ```javascript
-import func1 from './func1.js';
+import './func1.js';
 
 var func2 = function() {
   func1();
@@ -63,15 +63,15 @@ yarn install --dev gulp gulp-cli gulp-inline-import
 
 ## Examples of uses
 
-- [Example 1: simple import removal](#example-1-simple-import-removal)
+- [Example 1: including unnamed imports](#example-1-including-unnamed-imports)
 
-### Example 1: simple import removal
+### Example 1: including unnamed imports
 
 cate.js:
 
 ```javascript
-import cry from './cry.js';
-import walk from './walk.js';
+import './cry.js';
+import './walk.js';
 
 var cate = function() {
   cry();
@@ -105,7 +105,7 @@ export default walk;
 
 gulpfile.js
 
-```
+```javascript
 const gulp = require('gulp');
 const inlineImport = require('gulp-inline-import');
 
