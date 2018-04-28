@@ -15,7 +15,10 @@ const DEFAULT_VERBOSE_STATE = false;
  * 
  * @param content String
  * @param encryption String
- * @param regexp RegExp
+ * @param catch_import_statements RegExp
+ * @param catch_export_statements RegExp
+ * @param current_depth Integer
+ * @param max_depth Integer
  * @return String
  */
 function traverse(content, file_path, encryption, catch_import_statements, catch_export_statements, current_depth, max_depth) {
