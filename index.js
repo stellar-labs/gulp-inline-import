@@ -12,11 +12,12 @@ const PLUGIN_NAME = 'gulp-inline-import';
 const DEFAULT_MAX_ROUNDS = 3;
 const DEFAULT_VERBOSE_STATE = false;
 
-function noMoreImportStatements(plugin_name, file_content, verbose_mode) {
+function noMoreImportStatements(plugin_name, file_content, verbose_mode, allow_import_export_everywhere) {
 	let no_import_statements_found = true;
 
 	const PARSED_CONTENT = babylon.parse(file_content, {
-		sourceType: 'module'
+		sourceType: 'module',
+		allowImportExportEverywhere: allow_import_export_everywhere
 	});
 
 	if( PARSED_CONTENT.type === 'File' ) {
@@ -40,11 +41,12 @@ function isDefaultImportStatement(part) {
 	return part.specifiers.length === 0;
 }
 
-function removeExportDefaultStatements(file_path, file_name, file_content) {
+function removeExportDefaultStatements(file_path, file_name, file_content, allow_import_export_everywhere) {
 	let cleaned_content = file_content;
 
 	const PARSED_CONTENT = babylon.parse(file_content, {
-		sourceType: 'module'
+		sourceType: 'module',
+		allowImportExportEverywhere: allow_import_export_everywhere
 	});
 
 	if( PARSED_CONTENT.type === 'File' ) {
@@ -67,9 +69,9 @@ function removeExportDefaultStatements(file_path, file_name, file_content) {
 	return cleaned_content;
 }
 
-function traverse(file_path, file_name, file_content, verbose_mode) {
-	if( noMoreImportStatements(PLUGIN_NAME, file_content, verbose_mode) === true ) {
-		file_content_without_export_statements = removeExportDefaultStatements(file_path, file_name, file_content);
+function traverse(file_path, file_name, file_content, verbose_mode, allow_import_export_everywhere) {
+	if( noMoreImportStatements(PLUGIN_NAME, file_content, verbose_mode, allow_import_export_everywhere) === true ) {
+		file_content_without_export_statements = removeExportDefaultStatements(file_path, file_name, file_content, allow_import_export_everywhere);
 
 		fancyLog.info(PLUGIN_NAME + ': no more import statements in ' + file_name);
 
@@ -80,7 +82,8 @@ function traverse(file_path, file_name, file_content, verbose_mode) {
 		let decay = 0;
 
 		const PARSED_CONTENT = babylon.parse(file_content, {
-			sourceType: 'module'
+			sourceType: 'module',
+			allowImportExportEverywhere: allow_import_export_everywhere
 		});
 
 		if( PARSED_CONTENT.type === 'File' ) {
@@ -101,7 +104,7 @@ function traverse(file_path, file_name, file_content, verbose_mode) {
 										fancyLog.info(PLUGIN_NAME + ': searching for imports to include in ' + IMPORTED_FILE_NAME);
 									}
 
-									const cleaned_imported_file_content = traverse(path.dirname(IMPORTED_FILE_PATH), IMPORTED_FILE_NAME, IMPORTED_FILE_CONTENT, verbose_mode);
+									const cleaned_imported_file_content = traverse(path.dirname(IMPORTED_FILE_PATH), IMPORTED_FILE_NAME, IMPORTED_FILE_CONTENT, verbose_mode, allow_import_export_everywhere);
 
 									cleaned_file_content = cleaned_file_content.substring(0, (part.start + decay)) + cleaned_imported_file_content + cleaned_file_content.substring(part.end + decay);
 
@@ -141,12 +144,20 @@ function inlineImport(options = { verbose: DEFAULT_VERBOSE_STATE, maxDepth: DEFA
 		throw new pluginError(PLUGIN_NAME, 'option maxDepth should be an integer, ' + typeOf(options.maxDepth) + ' given');
 	}
 
+	if( options !== undefined && ('allowImportExportEverywhere' in options) === true && typeOf(options.allowImportExportEverywhere) !== 'boolean' ) {
+		throw new pluginError(PLUGIN_NAME, 'option allowImportExportEverywhere should be a boolean, ' + typeOf(options.allowImportExportEverywhere) + ' given');
+	}
+
 	if(options !== undefined && ('verbose' in options) === false) {
 		options.verbose = DEFAULT_VERBOSE_STATE;
 	}
 
 	if(options !== undefined && ('maxDepth' in options) === false) {
 		options.maxDepth = DEFAULT_MAX_ROUNDS;
+	}
+
+	if(options !== undefined && ('allowImportExportEverywhere' in options) === false) {
+		options.allowImportExportEverywhere = false;
 	}
 
 	return through.obj(function(file, encryption, callback) {
@@ -159,13 +170,14 @@ function inlineImport(options = { verbose: DEFAULT_VERBOSE_STATE, maxDepth: DEFA
 		let file_content = new Buffer(file.contents).toString();
 
 		let parse = babylon.parse(file_content, {
-			sourceType: 'module'
+			sourceType: 'module',
+			allowImportExportEverywhere: options.allowImportExportEverywhere
 		});
 
 		let body = [];
 		const FILE_NAME = file.relative;
 
-		const INLINED_FILE_CONTENT = traverse(FILE_PATH, FILE_NAME, file_content, options.verbose);
+		const INLINED_FILE_CONTENT = traverse(FILE_PATH, FILE_NAME, file_content, options.verbose, options.allowImportExportEverywhere);
 
 		file.contents = new Buffer(INLINED_FILE_CONTENT);
 
