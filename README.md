@@ -144,7 +144,8 @@ Node packages exists to remove the export statement, like the babel plugin [babe
 
 ## Options
 
-| option   | type    | required | default | possible values | description                                                                                                            |
-|----------|---------|----------|---------|-----------------|------------------------------------------------------------------------------------------------------------------------|
-| verbose  | Boolean | no       | false   | true,false      | Enable step by step in-console debug information                                                                       |
-| maxDepth | Integer | no       | 3       |                 | Number of times the plugin should go deep inside nested import statements. This prevent circular imports for instance. |
+| option                      | type    | required | default | possible values | description                                                                                                            |
+|-----------------------------|---------|----------|---------|-----------------|------------------------------------------------------------------------------------------------------------------------|
+| verbose                     | Boolean | no       | false   | true,false      | Enable step by step in-console debug information                                                                       |
+| maxDepth                    | Integer | no       | 3       |                 | Number of times the plugin should go deep inside nested import statements. This prevent circular imports for instance. |
+| allowImportExportEverywhere | Boolean | no       | false   | true,false      | Let you use import and export statements in the middle of your code instead of strictly at the top or bottom.          |
