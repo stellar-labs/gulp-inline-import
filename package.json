@@ -9,7 +9,7 @@
     "include",
     "fetch"
   ],
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Inline any ES6 import by fetching its resource down to the importing file",
   "main": "index.js",
   "repository": "https://github.com/stellar-labs/gulp-inline-import",
