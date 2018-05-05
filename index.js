@@ -9,180 +9,257 @@ const fs = require('fs');
 const path = require('path');
 
 const PLUGIN_NAME = 'gulp-inline-import';
-const DEFAULT_MAX_ROUNDS = 3;
-const DEFAULT_VERBOSE_STATE = false;
 
-function noMoreImportStatements(plugin_name, file_content, verbose_mode, allow_import_export_everywhere) {
-	let no_import_statements_found = true;
+/**
+ * Checks wether the scoped option is a boolean
+ * 
+ * @param {object} options
+ * @param {string} key
+ * @throws {Error}
+ */
+function checkOptionIsBoolean(options, key) {
+    if( key in options === true && typeOf(options[key]) !== 'boolean' ) {
+        fancyLog.error(PLUGIN_NAME + ': option "' + key + '" should be a boolean, ' + typeOf(options[key]) + ' given');
 
-	const PARSED_CONTENT = babylon.parse(file_content, {
-		sourceType: 'module',
-		allowImportExportEverywhere: allow_import_export_everywhere
-	});
-
-	if( PARSED_CONTENT.type === 'File' ) {
-		if( PARSED_CONTENT.program.type === 'Program' ) {
-			PARSED_CONTENT_BODY = PARSED_CONTENT.program.body;
-
-			for( let part of PARSED_CONTENT_BODY ) {
-				if( part.type === 'ImportDeclaration' ) {
-					no_import_statements_found = false;
-
-					break;
-				}
-			}
-		}
-	}
-
-	return no_import_statements_found;
+        return;
+    }
 }
 
-function isDefaultImportStatement(part) {
-	return part.specifiers.length === 0;
+/**
+ * Checks wether the scoped option is an integer
+ * 
+ * @param {object} options
+ * @param {string} key
+ * @throws {Error}
+ */
+function checkOptionIsInteger(options, key) {
+    if( key in options === true && typeOf(options[key] !== 'integer') ) {
+        fancyLog.error(PLUGIN_NAME + ': option "' + options[key] + '" should be an integer, ' + typeOf(options[key]) + ' given');
+
+        return;
+    }
 }
 
-function removeExportDefaultStatements(file_path, file_name, file_content, allow_import_export_everywhere) {
-	let cleaned_content = file_content;
-
-	const PARSED_CONTENT = babylon.parse(file_content, {
-		sourceType: 'module',
-		allowImportExportEverywhere: allow_import_export_everywhere
-	});
-
-	if( PARSED_CONTENT.type === 'File' ) {
-		if( PARSED_CONTENT.program.type === 'Program' ) {
-			const PARSED_CONTENT_BODY = PARSED_CONTENT.program.body;
-
-			for( let part of PARSED_CONTENT_BODY ) {
-				if( part.type === 'ExportDefaultDeclaration' ) {
-					if( part.declaration.type === 'Identifier' ) {
-						cleaned_content = file_content.substring(0, part.start) + file_content.substring(part.end);
-					}
-					else {
-						console.log(new pluginError(PLUGIN_NAME, 'export default statement in "' + file_name + '" declared as "' + part.declaration.type + '" not supported yet (please fill an issue)').toString());
-					}
-				}
-			}
-		}
-	}
-
-	return cleaned_content;
+/**
+ * Check wether all options are valid
+ * 
+ * @param {object} options
+ * @throws {Error}
+ */
+function checkOptions(options = {}) {
+    checkOptionIsBoolean(options, 'verbose');
+    checkOptionIsInteger(options, 'maxDepth');
+    checkOptionIsBoolean(options, 'allowImportExportEverywhere');    
 }
 
-function traverse(file_path, file_name, file_content, verbose_mode, allow_import_export_everywhere) {
-	if( noMoreImportStatements(PLUGIN_NAME, file_content, verbose_mode, allow_import_export_everywhere) === true ) {
-		file_content_without_export_statements = removeExportDefaultStatements(file_path, file_name, file_content, allow_import_export_everywhere);
+/**
+ * Fill the scoped option by a given value
+ * 
+ * @param {Object} options 
+ * @param {string} key 
+ * @param {*} value 
+ * @returns {Object}
+ */
+function fillOptionByValue(options, key, value) {
+    options[key] = value;
 
-		fancyLog.info(PLUGIN_NAME + ': no more import statements in ' + file_name);
+    return options;
+}
 
-		return file_content_without_export_statements;
-	}
-	else {
-		let cleaned_file_content = file_content;
-		let decay = 0;
+/**
+ * Fill the non specified option by a default value
+ * 
+ * @param {Object} options 
+ * @returns {Object}
+ */
+function fillMissingOptions(options = {}) {
+    let filled_options = options;
 
-		const PARSED_CONTENT = babylon.parse(file_content, {
-			sourceType: 'module',
-			allowImportExportEverywhere: allow_import_export_everywhere
-		});
+    if( 'verbose' in filled_options === false ) {
+        filled_options = fillOptionByValue(filled_options, 'verbose', false);
+    }
 
-		if( PARSED_CONTENT.type === 'File' ) {
-			if( PARSED_CONTENT.program.type === 'Program' ) {
-				const PARSED_CONTENT_BODY = PARSED_CONTENT.program.body;
+    if( 'maxDepth' in filled_options === false ) {
+        filled_options = fillOptionByValue(filled_options, 'maxDepth', 3);
+    }
 
-				for( let part of PARSED_CONTENT_BODY ) {
-					if( part.type === 'ImportDeclaration' ) {
-						if( isDefaultImportStatement(part) === true ) {
-							if( part.source.type === 'StringLiteral' ) {
-								try {
-									const IMPORTED_FILE_PATH = file_path + '/' + part.source.value;
-									const IMPORTED_FILE_NAME = path.basename(IMPORTED_FILE_PATH);
-									const IMPORTED_FILE_CONTENT = fs.readFileSync(IMPORTED_FILE_PATH).toString();
+    if( 'allowImportExportEverywhere' in filled_options === false ) {
+        filled_options = fillOptionByValue(filled_options, 'allowImportExportEverywhere', false);
+    }
 
-									if( verbose_mode === true ) {
-										fancyLog.info(PLUGIN_NAME + ': import statement found in ' + file_name);
-										fancyLog.info(PLUGIN_NAME + ': searching for imports to include in ' + IMPORTED_FILE_NAME);
-									}
+    return filled_options;
+}
 
-									const cleaned_imported_file_content = traverse(path.dirname(IMPORTED_FILE_PATH), IMPORTED_FILE_NAME, IMPORTED_FILE_CONTENT, verbose_mode, allow_import_export_everywhere);
+/**
+ * 
+ * @param {string} path
+ * @throws {Error} 
+ * @returns {string}
+ */
+function getFileContent(path) {
+    try {
+        return fs.readFileSync(path).toString();
+    }
+    catch( error ) {
+        fancyLog.error(PLUGIN_NAME + ': could not get the content of "' + path + '"');
 
-									cleaned_file_content = cleaned_file_content.substring(0, (part.start + decay)) + cleaned_imported_file_content + cleaned_file_content.substring(part.end + decay);
+        return '';
+    }
+}
 
-									decay = (cleaned_imported_file_content.length - (part.end - part.start)) - decay;
-								}
-								catch ( error ) {
-									if( verbose_mode === true ) {
-										// file not found
-									}
-								}
-							}
-							else {
-								if( verbose_mode === true ) {
-									// log error part.source.type not supported
-								}
-							}
-						}
-					}
-				}
-			}
+/**
+ * 
+ * @param {Object} part 
+ * @return {Object}
+ */
+function importsCaracteristics(parts) {
+    let imports = [];
+    
+    for(part of parts) {
+        if( part.type === 'ImportDeclaration' ) {
+            imports.push(part);
+        }
+    }
+
+    return imports;
+}
+
+/**
+ * Returns an array of object representing the import statements
+ * 
+ * @param {string} file_path
+ * @param {object} options 
+ * @returns {Array}
+ */
+function fetchImports(file_path, options) {
+	const content = getFileContent(file_path);
+
+    const parsed_content = babylon.parse(content, {
+        sourceType: 'module',
+        allowImportExportEverywhere: options.allowImportExportEverywhere
+    });
+
+    var imports = [];
+
+    if( parsed_content.type !== 'File' ) {
+        fancyLog.error(PLUGIN_NAME + ': "' + file_path + '" is not a file (it is a ' + parsed_content.type + ', which is not supported), cannot find imports statements inside of it');
+
+        return imports;
+    }
+
+    if(parsed_content.program.type !== 'Program') {
+        fancyLog.error(PLUGIN_NAME + ': "' + file_path + '" is not a program (it is a ' + parsed_content.program.type + ', which is not supported)');
+
+        return imports;
+    }
+
+    imports = importsCaracteristics(parsed_content.program.body);    
+
+    return imports;
+}
+
+/**
+ * Return true if the import is unnamed (import './cate.js';)
+ * 
+ * @param {Object} part 
+ * @returns {boolean}
+ */
+function importIsUnnamed(part) {
+    return part.specifiers.length === 0;
+}
+
+/**
+ * Returns the file path from an import part object
+ * 
+ * @param {Object} part 
+ * @returns {string}
+ */
+function importFilePath(part) {
+    return part.source.value;
+}
+
+/**
+ * Return the file_path without the base path
+ * 
+ * @param {stirng} base_path 
+ * @param {string} file_path 
+ * @returns {string}
+ */
+function relativeFileName(base_path, file_path) {
+	return file_path.replace(base_path, '');
+}
+
+/**
+ * Inline the imports by recursively fetching the imports statements
+ * 
+ * @param {string} base_path
+ * @param {string} file_path
+ * @param {string} options 
+ * @returns {string}
+ */
+function inlineImports(base_path, file_path, options) {
+    let content = getFileContent(file_path);    
+    let decay = 0;
+    const imports = fetchImports(file_path, options);    
+
+    if( imports.length > 0 ) {
+        for( let importation of imports ) {
+            if( importIsUnnamed(importation) === true ) {
+                if( options.verbose === true ) {
+					fancyLog.info(PLUGIN_NAME + ': unnamed import detected on file ' + relativeFileName(base_path, file_path));
+					fancyLog.info(PLUGIN_NAME + ': this unnamed import points to the file ', relativeFileName(base_path, importFilePath(importation)));
+                }
+
+                const file_sub_content = inlineImports(base_path, './example/' + importFilePath(importation), options );
+
+                content = content.substring(0, (importation.start + decay)) + file_sub_content + content.substring(importation.end + decay);
+
+				decay = (file_sub_content.length - (importation.end - importation.start)) - decay;
+            }
+            else {
+                if( options.verbose === true ) {
+                    fancyLog.warn(PLUGIN_NAME + ': import with specifier is not supported yet');
+                }
+            }
+        }
+
+        return content;
+    }
+    else {
+		if( options.verbose === true ) {
+			fancyLog.info(PLUGIN_NAME + ': no imports to inline on file ' + relativeFileName(base_path, file_path));
 		}
 
-		return cleaned_file_content;
-	}
+        return content;
+    }
 }
 
 /**
  * Gulp plugin to inline import from other files.
  * It avoid having some code that relate to ES6 import system, like the output generated by Browserify.
  */ 
-function inlineImport(options = { verbose: DEFAULT_VERBOSE_STATE, maxDepth: DEFAULT_MAX_ROUNDS }) {
-	if(options !== undefined && ('verbose' in options) === true && typeOf(options.verbose) !== 'boolean') {
-		throw new pluginError(PLUGIN_NAME, 'option verbose should be a boolean, ' + typeOf(options.verbose) + ' given');
-	}
-
-	if(options !== undefined && ('maxDepth' in options) === true && typeOf(options.maxDepth) !== 'number')  {
-		throw new pluginError(PLUGIN_NAME, 'option maxDepth should be an integer, ' + typeOf(options.maxDepth) + ' given');
-	}
-
-	if( options !== undefined && ('allowImportExportEverywhere' in options) === true && typeOf(options.allowImportExportEverywhere) !== 'boolean' ) {
-		throw new pluginError(PLUGIN_NAME, 'option allowImportExportEverywhere should be a boolean, ' + typeOf(options.allowImportExportEverywhere) + ' given');
-	}
-
-	if(options !== undefined && ('verbose' in options) === false) {
-		options.verbose = DEFAULT_VERBOSE_STATE;
-	}
-
-	if(options !== undefined && ('maxDepth' in options) === false) {
-		options.maxDepth = DEFAULT_MAX_ROUNDS;
-	}
-
-	if(options !== undefined && ('allowImportExportEverywhere' in options) === false) {
-		options.allowImportExportEverywhere = false;
-	}
+function gulpInlineImport(options = {}) {
+	checkOptions();
+	options = fillMissingOptions(options);
 
 	return through.obj(function(file, encryption, callback) {
 		if(file.isNull() === true || file.isStream() === true) {
 			return callback(error = null, file);
 		}
 
-		const FILE_PATH = path.dirname(file.path);
+		const file_path = file.path;
+		const base_path = path.dirname(file_path);
 
-		let file_content = new Buffer(file.contents).toString();
+		fancyLog.info(PLUGIN_NAME + ': starting to inline imports in file ' + file.relative);
 
-		let parse = babylon.parse(file_content, {
-			sourceType: 'module',
-			allowImportExportEverywhere: options.allowImportExportEverywhere
-		});
+		const inlined_file_content = inlineImports(base_path, file_path, options);
 
-		let body = [];
-		const FILE_NAME = file.relative;
-
-		const INLINED_FILE_CONTENT = traverse(FILE_PATH, FILE_NAME, file_content, options.verbose, options.allowImportExportEverywhere);
-
-		file.contents = new Buffer(INLINED_FILE_CONTENT);
+		file.contents = new Buffer(inlined_file_content);
+		
+		fancyLog.info(PLUGIN_NAME + ': file ' + file.relative + ' inlined');
 
 		callback(error = null, file);
 	});
 }
 
-module.exports = inlineImport;
+module.exports = gulpInlineImport;
