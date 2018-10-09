@@ -107,19 +107,49 @@ function getFileContent(path) {
     }
 }
 
+function isIterable(obj) {
+  // checks for null and undefined
+  if (obj == null) {
+    return false;
+  }
+  return typeof obj[Symbol.iterator] === 'function';
+}
+
 /**
  * 
  * @param {Object} part 
  * @return {Object}
  */
-function importsCaracteristics(parts) {
+function importsCaracteristics(what) {
     let imports = [];
-    
-    for(part of parts) {
-        if( part.type === 'ImportDeclaration' ) {
-            imports.push(part);
-        }
-    }
+	
+	if (isIterable(what)) {
+		for(part of what) {
+			if( part.type === 'ImportDeclaration' )
+				imports.push(part);
+			else {
+				if (part.body)
+					imports = imports.concat(importsCaracteristics(part.body));
+				if (part.init)
+					imports = imports.concat(importsCaracteristics(part.init));
+				if (part.declarations)
+					imports = imports.concat(importsCaracteristics(part.declarations));
+				if (part.expression)
+					imports = imports.concat(importsCaracteristics(part.expression));
+			}
+		}
+	} else if (what.type == 'ImportDeclaration')
+		imports.push(what);
+	else {
+		if (what.body)
+			imports = imports.concat(importsCaracteristics(what.body));
+		if (what.init)
+			imports = imports.concat(importsCaracteristics(what.init));
+		if (what.declarations)
+			imports = imports.concat(importsCaracteristics(what.declarations));
+		if (what.expression)
+			imports = imports.concat(importsCaracteristics(what.expression));
+	}
 
     return imports;
 }
@@ -152,7 +182,6 @@ function fetchImports(file_path, options) {
 
         return imports;
     }
-
     imports = importsCaracteristics(parsed_content.program.body);    
 
     return imports;
