@@ -3,7 +3,7 @@ const through = require('through2');
 const pluginError = require('plugin-error');
 const typeOf = require('type-of');
 const fancyLog = require('fancy-log');
-const babylon = require('babylon');
+const babylon = require('@babel/parser');
 
 const fs = require('fs');
 const path = require('path');
