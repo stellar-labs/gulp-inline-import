@@ -239,7 +239,7 @@ function inlineImports(base_path, file_path, options) {
 					fancyLog.info(PLUGIN_NAME + ': this unnamed import points to the file ', relativeFileName(base_path, importFilePath(importation)));
                 }
 
-                const file_sub_content = inlineImports(base_path, importFilePath(importation), options );
+                const file_sub_content = inlineImports(base_path, base_path + path.sep + importFilePath(importation), options );
 
                 content = content.substring(0, (importation.start + decay)) + file_sub_content + content.substring(importation.end + decay);
 
