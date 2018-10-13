@@ -3,7 +3,7 @@ const through = require('through2');
 const pluginError = require('plugin-error');
 const typeOf = require('type-of');
 const fancyLog = require('fancy-log');
-const babylon = require('babylon');
+const babylon = require('@babel/parser');
 
 const fs = require('fs');
 const path = require('path');
@@ -107,19 +107,49 @@ function getFileContent(path) {
     }
 }
 
+function isIterable(obj) {
+  // checks for null and undefined
+  if (obj == null) {
+    return false;
+  }
+  return typeof obj[Symbol.iterator] === 'function';
+}
+
 /**
  * 
  * @param {Object} part 
  * @return {Object}
  */
-function importsCaracteristics(parts) {
+function importsCaracteristics(what) {
     let imports = [];
-    
-    for(part of parts) {
-        if( part.type === 'ImportDeclaration' ) {
-            imports.push(part);
-        }
-    }
+	
+	if (isIterable(what)) {
+		for(part of what) {
+			if( part.type === 'ImportDeclaration' )
+				imports.push(part);
+			else {
+				if (part.body)
+					imports = imports.concat(importsCaracteristics(part.body));
+				if (part.init)
+					imports = imports.concat(importsCaracteristics(part.init));
+				if (part.declarations)
+					imports = imports.concat(importsCaracteristics(part.declarations));
+				if (part.expression)
+					imports = imports.concat(importsCaracteristics(part.expression));
+			}
+		}
+	} else if (what.type == 'ImportDeclaration')
+		imports.push(what);
+	else {
+		if (what.body)
+			imports = imports.concat(importsCaracteristics(what.body));
+		if (what.init)
+			imports = imports.concat(importsCaracteristics(what.init));
+		if (what.declarations)
+			imports = imports.concat(importsCaracteristics(what.declarations));
+		if (what.expression)
+			imports = imports.concat(importsCaracteristics(what.expression));
+	}
 
     return imports;
 }
@@ -152,7 +182,6 @@ function fetchImports(file_path, options) {
 
         return imports;
     }
-
     imports = importsCaracteristics(parsed_content.program.body);    
 
     return imports;
@@ -210,7 +239,7 @@ function inlineImports(base_path, file_path, options) {
 					fancyLog.info(PLUGIN_NAME + ': this unnamed import points to the file ', relativeFileName(base_path, importFilePath(importation)));
                 }
 
-                const file_sub_content = inlineImports(base_path, './example/' + importFilePath(importation), options );
+                const file_sub_content = inlineImports(base_path, base_path + path.sep + importFilePath(importation), options );
 
                 content = content.substring(0, (importation.start + decay)) + file_sub_content + content.substring(importation.end + decay);
 
